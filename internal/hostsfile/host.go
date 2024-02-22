@@ -23,41 +23,31 @@ func populate() {
 		return
 	}
 	defer file.Close()
-
-	// Mapa para almacenar las direcciones IP y sus dominios asociados
-
 	// scan line by line
 	scanner := bufio.NewScanner(file)
+	// Crear un nuevo buffer de bytes sin el BOM
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		// Ignorar empty and comment lines
+
+		// delete  BOM character
+		line = strings.TrimPrefix(line, "\ufeff")
+		line = strings.TrimSpace(line)
+		// Ignore empty and comment lines
 		if strings.HasPrefix(line, "#") || len(line) == 0 {
 			continue
 		}
-		// Dividir la línea en campos separados por espacios
 		fields := strings.Fields(line)
-		// La primera palabra es la dirección IP, las siguientes son los dominios asociados
 		ip := fields[0]
 		hosts := fields[1:]
-		// Agregar los dominios al mapa
 		IpHosts[ip] = append(IpHosts[ip], hosts...)
 	}
 
-	// Comprobar errores en el escaneo del archivo
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error al escanear el archivo hosts:", err)
 		return
 	}
 
-	// Imprimir el mapa de direcciones IP y dominios asociados
-	for ip, hosts := range IpHosts {
-		fmt.Printf("IP: %s\n", ip)
-		fmt.Println("Hosts:")
-		for _, host := range hosts {
-			fmt.Printf("- %s\n", host)
-		}
-		fmt.Println()
-	}
 }
 
 func GetHostEntries() map[string][]string {
@@ -66,4 +56,14 @@ func GetHostEntries() map[string][]string {
 		copiedMap[key] = value
 	}
 	return copiedMap
+}
+
+func Show() {
+	for ip, hosts := range IpHosts {
+		fmt.Printf("%s --> ", ip)
+		for _, host := range hosts {
+			fmt.Printf(" | %s", host)
+		}
+		fmt.Println()
+	}
 }
