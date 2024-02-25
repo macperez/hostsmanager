@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/macperez/hostsmanager/internal/hostsfile"
 	"github.com/spf13/cobra"
@@ -20,6 +21,38 @@ func main() {
 			hostsfile.Show()
 		},
 	}
+
+	var backupCmd = &cobra.Command{
+		Use:   "backup",
+		Short: "Create backup",
+		Args:  cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			hostsfile.CreateBackup()
+		},
+	}
+	var ip string
+	var getHostsByIPCmd = &cobra.Command{
+		Use:   "hosts",
+		Short: "Get hosts associated to a given IP",
+		Run: func(cmd *cobra.Command, args []string) {
+			ip, _ := cmd.Flags().GetString("IP")
+			ip = strings.Trim(ip, " ")
+			hosts := hostsfile.GetHosts(ip)
+			if hosts == nil {
+				fmt.Println("This IP is not in hosts file")
+			} else {
+
+				for _, host := range hosts {
+					fmt.Printf("%s\n", host)
+				}
+
+			}
+
+		},
+	}
+
+	getHostsByIPCmd.Flags().StringVarP(&ip, "IP", "i", " ", "IP format")
+	getHostsByIPCmd.MarkFlagRequired("IP")
 
 	/*
 		var getMeasurementStationCmd = &cobra.Command{
@@ -49,7 +82,7 @@ func main() {
 
 		rootCmd.PersistentFlags().BoolVar(&insert, "insert", false, "Insert into database")
 	*/
-	rootCmd.AddCommand(showCmd)
+	rootCmd.AddCommand(showCmd, backupCmd, getHostsByIPCmd)
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	if err := rootCmd.Execute(); err != nil {
