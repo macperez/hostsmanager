@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/macperez/hostsmanager/internal/hostsfile"
@@ -30,28 +32,35 @@ func main() {
 			hostsfile.CreateBackup()
 		},
 	}
-	var ip string
+	var ip, host string
 	var getHostsByIPCmd = &cobra.Command{
 		Use:   "hosts",
 		Short: "Get hosts associated to a given IP",
 		Run: func(cmd *cobra.Command, args []string) {
 			ip, _ := cmd.Flags().GetString("IP")
+			hostsFlag, _ := cmd.Flags().GetBool("hosts")
 			ip = strings.Trim(ip, " ")
-			hosts := hostsfile.GetHosts(ip)
-			if hosts == nil {
-				fmt.Println("This IP is not in hosts file")
+			if hostsFlag {
+				hostList := readEntry()
+				hostsfile.AddHostsEntries(ip, hostList)
+
 			} else {
-
-				for _, host := range hosts {
-					fmt.Printf("%s\n", host)
+				hosts := hostsfile.GetHosts(ip)
+				if hosts == nil {
+					fmt.Println("This IP is not in hosts file")
+				} else {
+					for _, host := range hosts {
+						fmt.Printf("%s\n", host)
+					}
 				}
-
 			}
 
 		},
 	}
-
+	var hostsInsert bool
 	getHostsByIPCmd.Flags().StringVarP(&ip, "IP", "i", " ", "IP format")
+	getHostsByIPCmd.Flags().StringVarP(&host, "host", "s", " ", "host")
+	getHostsByIPCmd.Flags().BoolVarP(&hostsInsert, "hosts", "", false, "Loop to insert")
 	getHostsByIPCmd.MarkFlagRequired("IP")
 
 	/*
@@ -89,4 +98,38 @@ func main() {
 		fmt.Println(err)
 	}
 
+}
+
+func readEntry() []string {
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Insert IP and host list ('!wq' for save changes)")
+	hostList := make([]string, 0)
+
+	for {
+		scanner.Scan()
+
+		entry := scanner.Text()
+
+		if strings.EqualFold(entry, "!wq") {
+			fmt.Println("Saving changes ... ")
+			return hostList
+
+		}
+
+		if strings.EqualFold(entry, "!q") {
+			fmt.Println("Exit without saving changes")
+			return nil
+		}
+
+		// check errors before saving
+		hostList = append(hostList, entry)
+		// Imprimir la entrada del usuario
+		fmt.Printf("\n%s\n", entry)
+	}
+
+	// Verificar si hubo errores durante la lectura
+	if err := scanner.Err(); err != nil {
+		fmt.Println("error reading entry:", err)
+	}
+	return nil
 }

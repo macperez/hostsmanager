@@ -7,26 +7,25 @@ import (
 	"strings"
 )
 
-const WINDOWS_HOST_DIRECTORY = "C:\\Windows\\System32\\drivers\\etc\\"
+// const WINDOWS_HOST_DIRECTORY = "C:\\Windows\\System32\\drivers\\etc\\"
+const WINDOWS_HOST_DIRECTORY = "C:\\Users\\macastrope\\testhosts\\"
 
-var IpHosts map[string][]string
-
-func init() {
-	IpHosts = make(map[string][]string)
-
+type HostManager struct {
+	IpHosts   map[string][]string
+	populated bool
 }
 
-func populate() {
+func (man *HostManager) populate() {
 	windows_hosts_path := WINDOWS_HOST_DIRECTORY + "\\hosts"
+	fmt.Printf("Reading hosts from %s\n", windows_hosts_path)
 	file, err := os.Open(windows_hosts_path)
 	if err != nil {
-		fmt.Println("Error al abrir el archivo hosts:", err)
+		fmt.Println("Error opening hosts:", err)
 		return
 	}
 	defer file.Close()
 	// scan line by line
 	scanner := bufio.NewScanner(file)
-	// Crear un nuevo buffer de bytes sin el BOM
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -41,21 +40,36 @@ func populate() {
 		fields := strings.Fields(line)
 		ip := fields[0]
 		hosts := fields[1:]
-		//val, ok := IpHosts[ip]
-		IpHosts[ip] = append(IpHosts[ip], hosts...)
-
+		man.IpHosts[ip] = append(man.IpHosts[ip], hosts...)
+		man.populated = true
 	}
-
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error scanning hosts:", err)
 		return
 	}
+}
+
+func (man *HostManager) AddEntry(ip string, host string) {
+	man.populate()
+	hosts := man.IpHosts[ip]
+	hosts = append(hosts, host)
+	man.IpHosts[ip] = hosts
 
 }
 
+var manager HostManager
+
+func init() {
+	manager = HostManager{
+		IpHosts: make(map[string][]string),
+	}
+}
+
 func Show() {
-	populate()
-	for ip, hosts := range IpHosts {
+	if !manager.populated {
+		manager.populate()
+	}
+	for ip, hosts := range manager.IpHosts {
 		fmt.Printf("%s --> ", ip)
 		for _, host := range hosts {
 			fmt.Printf(" | %s", host)
@@ -64,15 +78,28 @@ func Show() {
 	}
 }
 
-func AddEntry(ip string, hostsList []string) {
-	IpHosts[ip] = hostsList
-}
-
 func GetHosts(ip string) []string {
-	populate()
-	hosts, present := IpHosts[ip]
+	if !manager.populated {
+		manager.populate()
+	}
+	hosts, present := manager.IpHosts[ip]
 	if !present {
 		return nil
 	}
 	return hosts
+}
+
+func AddEntry(ip string, host string) {
+	manager.AddEntry(ip, host)
+}
+
+func AddHostsEntries(ip string, hosts []string) {
+	// First create backup
+	CreateBackup()
+
+	for _, host := range hosts {
+		manager.AddEntry(ip, host)
+	}
+	// save changes in new hosts file
+	//SaveChanges()
 }
